@@ -79,9 +79,9 @@ class Version1X extends AbstractSocketIO
     }
 
     /** {@inheritDoc} */
-    public function emit($event, array $args)
+    public function emit($event, $message)
     {
-        return $this->write(EngineInterface::MESSAGE, static::EVENT . json_encode([$event, $args]));
+        return $this->write(EngineInterface::MESSAGE, static::EVENT . json_encode([$event, $message]));
     }
 
     /** {@inheritDoc} */

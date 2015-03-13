@@ -19,7 +19,7 @@ require __DIR__ . '/../../../../vendor/autoload.php';
 $client = new \ElephantIO\Client(new \ElephantIO\Engine\SocketIO\Version1X('http://127.0.0.1:8080'));
 
 $client->initialize();
-$client->emit('message', ['foo' => time()]);
+$client->emit('message', "sdsdsd");
 
 $handler = new EventHandler($client);
 

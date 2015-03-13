@@ -90,10 +90,10 @@ class Client
      *
      * @return $this
      */
-    public function emit($event, array $args)
+    public function emit($event, $message)
     {
-        null !== $this->logger && $this->logger->debug('Sending a new message', ['event' => $event, 'args' => $args]);
-        $this->engine->emit($event, $args);
+        null !== $this->logger && $this->logger->debug('Sending a new message', ['event' => $event, 'args' => $message]);
+        $this->engine->emit($event, $message);
 
         return $this;
     }
