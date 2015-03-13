@@ -18,6 +18,7 @@ use Psr\Log\LoggerInterface;
 use ElephantIO\EngineInterface,
     ElephantIO\Payload\Decoder,
     ElephantIO\Exception\UnsupportedActionException;
+use ElephantIO\Exception\ConnectionBrokenException;
 
 abstract class AbstractSocketIO implements EngineInterface
 {
@@ -88,11 +89,21 @@ abstract class AbstractSocketIO implements EngineInterface
     public function read()
     {
         if (!is_resource($this->stream)) {
-            return;
+            return null;
         }
         
         $data = fread($this->stream, 2);
         $bytes = unpack('C*', $data);
+        
+        //if connection broken
+        if (strlen($data) == 0) {
+			throw new ConnectionBrokenException("Connection to server is broken");
+		}
+        
+        if (!isset($bytes[2])) {
+        	var_dump($data);
+        	var_dump($bytes);
+        }
         
         /*
          * The first byte contains the FIN bit, the reserved bits, and the
