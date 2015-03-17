@@ -12,7 +12,6 @@
 use ElephantIO\Client,
 	ElephantIO\EventListener,
     ElephantIO\Engine\SocketIO\Version1X;
-use ElephantIO\EventHandler;
 
 require __DIR__ . '/../../../../vendor/autoload.php';
 
@@ -21,7 +20,7 @@ $client = new \ElephantIO\Client(new \ElephantIO\Engine\SocketIO\Version1X('http
 $client->initialize();
 $client->emit('message', "sdsdsd");
 
-$handler = new EventHandler($client);
+$handler = new EventListener($client);
 
 $handler->addListener('message', function ($message, $handler) { echo "Received message: {$message->getData()}\n"; });
 
