@@ -74,8 +74,13 @@ class Version1X extends AbstractSocketIO
 
         $this->write(EngineInterface::CLOSE);
 
-        fclose($this->stream);
+        $this->reset();
+    }
+    
+    public function reset() {
+    	fclose($this->stream);
         $this->stream = null;
+        $this->session = null;
     }
 
     /** {@inheritDoc} */

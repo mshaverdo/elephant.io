@@ -83,8 +83,14 @@ class Version0X extends AbstractSocketIO
             return;
         }
 
-        fclose($this->stream);
-        $this->stream = null;
+       $this->reset();
+    }
+    
+    /** {@inheritDoc} */
+    public function reset() {
+    	fclose($this->stream);
+        $this->stream = null;;
+        $this->session = null;
     }
 
     /** {@inheritDoc} */

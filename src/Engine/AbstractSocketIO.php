@@ -66,6 +66,12 @@ abstract class AbstractSocketIO implements EngineInterface
         throw new UnsupportedActionException($this, 'close');
     }
 
+    /** {@inheritDoc} */
+    public function reset()
+    {
+        throw new UnsupportedActionException($this, 'close');
+    }
+
     /**
      * Write the message to the socket
      *
@@ -97,13 +103,10 @@ abstract class AbstractSocketIO implements EngineInterface
         
         //if connection broken
         if (strlen($data) == 0) {
+        	//reset stream if connection broken
+        	$this->reset();
 			throw new ConnectionBrokenException("Connection to server is broken");
 		}
-        
-        if (!isset($bytes[2])) {
-        	var_dump($data);
-        	var_dump($bytes);
-        }
         
         /*
          * The first byte contains the FIN bit, the reserved bits, and the

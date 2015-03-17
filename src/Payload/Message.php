@@ -28,7 +28,7 @@ class Message {
 	
 	public static function createFromRawPayload($raw_payload) {
 		//trim first two bytes from payload
-		$parsed_payload = json_decode(substr($raw_payload, 2));
+		$parsed_payload = json_decode(substr($raw_payload, 2), true);
 		
 		if (empty($parsed_payload[0]) || !isset($parsed_payload[1]) || count($parsed_payload) != 2) {
 			throw new InvalidPayloadException("Payload is invalid: {$raw_payload}");
