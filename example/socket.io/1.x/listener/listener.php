@@ -22,6 +22,6 @@ $client->emit('message', "sdsdsd");
 
 $handler = new EventListener($client);
 
-$handler->addListener('message', function ($message, $handler) { echo "Received message: {$message->getData()}\n"; });
+$handler->addHandler('request', function ($message, $handler) { echo "Received message: {$message->getData()}\n"; });
 
 $handler->start();

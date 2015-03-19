@@ -43,12 +43,6 @@ class Decoder extends AbstractPayload implements Countable
 
         $length = count($this);
 
-        // if ($payload !== null) and ($payload packet error)?
-        // invalid websocket packet data or not (text, binary opCode)
-        if (3 > $length) {
-            return;
-        }
-
         $payload = array_map('ord', str_split($this->payload));
 
         $this->fin = ($payload[0] >> 0b111);
@@ -95,8 +89,8 @@ class Decoder extends AbstractPayload implements Countable
         $length = ord($this->payload[1]) & 0x7F;
 
         if ($length == 126 || $length == 127) {
-            $length = unpack('H*', substr($this->payload, 2, ($length == 126 ? 2 : 4)));
-            $length = hexdec($length[1]);
+            $length = unpack('n*', substr($this->payload, 2, ($length == 126 ? 2 : 4)))[1];
+//             $length = hexdec($length[1]);
         }
 
         return $this->length = $length;

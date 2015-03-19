@@ -20,6 +20,8 @@ use InvalidArgumentException;
  */
 class Session
 {
+	const HEARTBEAT_LAG = 0;
+	
     /** @var integer session's id */
     private $id;
 
@@ -61,8 +63,10 @@ class Session
      */
     public function needsHeartbeat()
     {
-        if (0 < $this->timeouts['interval'] && time() > ($this->timeouts['interval'] + $this->heartbeat - 5)) {
-            $this->heartbeat = time();
+    	$millitime = round(microtime(true) * 1000);
+    	
+        if (0 < $this->timeouts['interval'] && $millitime > ($this->timeouts['interval'] + $this->heartbeat - self::HEARTBEAT_LAG)) {
+            $this->heartbeat = $millitime;
 
             return true;
         }

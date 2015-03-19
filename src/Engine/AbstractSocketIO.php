@@ -19,6 +19,7 @@ use ElephantIO\EngineInterface,
     ElephantIO\Payload\Decoder,
     ElephantIO\Exception\UnsupportedActionException;
 use ElephantIO\Exception\ConnectionBrokenException;
+use ElephantIO\Engine\SocketIO\Session;
 
 abstract class AbstractSocketIO implements EngineInterface
 {
@@ -33,7 +34,11 @@ abstract class AbstractSocketIO implements EngineInterface
     /** @var string[] Parse url result */
     protected $url;
 
-    /** @var string[] Session information */
+    /**
+     * Session information
+     *  
+     * @var \ElephantIO\Engine\SocketIO\Session 
+     */
     protected $session;
 
     /** @var mixed[] Array of options for the engine */
@@ -92,20 +97,58 @@ abstract class AbstractSocketIO implements EngineInterface
      * Be careful, this method may hang your script, as we're not in a non
      * blocking mode.
      */
-    public function read()
-    {
+    public function read() {
         if (!is_resource($this->stream)) {
             return null;
         }
-        
+    	
+        while (true) {
+        	//set heartbeat check timeout
+        	$this->setStreamTimeoutHeartbeatCheck();
+        	//...and try to read message until check heartbeat timeout reached
+        	$data = $this->readBlocking();
+
+        	if (!isset($data)) {
+	        	//no data received, check, is heartbeat sending needed
+        		$this->session->needsHeartbeat()
+        			and $this->sendHeartbeat();
+        		continue;
+        	}
+        	
+        	if (EngineInterface::PONG == $this->getPacketType($data)) {
+        		//skip pong packet
+        		continue;
+        	}
+        	
+        	//$data successfully read
+        	$this->restoreStreamTimeoutDefault();
+        	return $data;
+        }
+    }
+
+    /**
+     * Read frame in blocking mode and return null if timeout reached
+     *
+     */
+    protected function readBlocking()
+    {
+    	if (!is_resource($this->stream)) {
+            throw new ConnectionBrokenException("Trying to read data while connection broken");
+        }
+    	
         $data = fread($this->stream, 2);
-        $bytes = unpack('C*', $data);
         
-        //if connection broken
+        //data not read
         if (strlen($data) == 0) {
-        	//reset stream if connection broken
-        	$this->reset();
-			throw new ConnectionBrokenException("Connection to server is broken");
+        	if (stream_get_meta_data($this->stream)['timed_out']) {
+        		//just timed out, don't worry
+        		return null;
+        	} else {
+		        //if connection broken
+	        	//reset stream if connection broken
+	        	$this->reset();
+				throw new ConnectionBrokenException("Connection to server is broken");
+        	}
 		}
         
         /*
@@ -113,6 +156,7 @@ abstract class AbstractSocketIO implements EngineInterface
          * opcode... We're not interested in them. Yet.
          * the second byte contains the mask bit and the payload's length
          */
+        $bytes = unpack('C*', $data);
         $mask	= ($bytes[2] & 0b10000000) >> 7;
         $length	= $bytes[2] & 0b01111111;
         
@@ -225,6 +269,38 @@ abstract class AbstractSocketIO implements EngineInterface
                 'debug'   => false,
                 'wait'    => 100*1000,
                 'timeout' => ini_get("default_socket_timeout")];
+    }
+    
+    protected function sendHeartbeat() {
+    	$this->write(EngineInterface::PING);
+    }
+    
+    protected function setStreamTimeoutHeartbeatCheck() {
+    	$interval = $this->getHeartbeatCheckInterval();
+    	
+    	stream_set_timeout($this->stream, floor($interval), round(1000000 * ($interval - floor($interval))));
+    }
+    
+    protected function restoreStreamTimeoutDefault() {
+    	stream_set_timeout($this->stream, $this->options['timeout']);
+    }
+    
+    /**
+     * Return heartbeat check interval in seconds. Fractional number supported
+     * 
+     * @return float
+     */
+    protected function getHeartbeatCheckInterval() {
+    	return 1.0;
+    }
+    
+    /**
+     * Return packet data from raw frame payload
+     * 
+     * @param string $raw_packet_data
+     */
+    protected function getPacketType($raw_frame_payload) {
+    	return $raw_frame_payload[0];
     }
 }
 

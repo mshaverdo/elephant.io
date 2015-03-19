@@ -67,6 +67,11 @@ class EventListener {
 		$this->is_running = false;
 	}
 	
+	/**
+	 * 
+	 * 
+	 * @return \ElephantIO\Client
+	 */
 	public function getClient() {
 		return $this->client;
 	}
