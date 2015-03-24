@@ -60,5 +60,12 @@ interface EngineInterface
 
     /** Gets the name of the engine */
     public function getName();
+    
+    /**
+     * Sets read timeout in milliseconds
+     * 
+     * @param int $milliseconds
+     */
+    public function setReadTimeout($milliseconds);
 }
 

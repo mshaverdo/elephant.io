@@ -23,7 +23,7 @@ use ElephantIO\Engine\SocketIO\Session;
 
 abstract class AbstractSocketIO implements EngineInterface
 {
-    const CONNECT      = 0;
+	const CONNECT      = 0;
     const DISCONNECT   = 1;
     const EVENT        = 2;
     const ACK          = 3;
@@ -46,6 +46,13 @@ abstract class AbstractSocketIO implements EngineInterface
 
     /** @var resource Resource to the connected stream */
     protected $stream;
+    
+    /**
+     * Read timeout in microcesonds
+     * 
+     * @var int
+     */
+    protected $read_timeout = 0;
 
     public function __construct($url, array $options = [])
     {
@@ -99,19 +106,31 @@ abstract class AbstractSocketIO implements EngineInterface
      */
     public function read() {
         if (!is_resource($this->stream)) {
-            return null;
+            throw new ConnectionBrokenException("Trying to read data while connection broken");
         }
     	
+        $waiting_expiration_time = empty($this->read_timeout)
+        	? null
+        	: microtime(true) + $this->read_timeout / 1000000;
+        
+        //set heartbeat check timeout
+        $this->setStreamTimeoutRead();
         while (true) {
-        	//set heartbeat check timeout
-        	$this->setStreamTimeoutHeartbeatCheck();
-        	//...and try to read message until check heartbeat timeout reached
+        	if (!empty($waiting_expiration_time) && microtime(true) > $waiting_expiration_time) {
+        		//reading timeout reached, return empty string
+        		$this->restoreStreamTimeoutDefault();
+        		return null;
+        	}
+        	
+        	//check, is heartbeat sending needed
+       		$this->session->needsHeartbeat()
+       			and $this->sendHeartbeat();
+        		
+        	//try to read message until check heartbeat timeout reached
         	$data = $this->readBlocking();
 
         	if (!isset($data)) {
-	        	//no data received, check, is heartbeat sending needed
-        		$this->session->needsHeartbeat()
-        			and $this->sendHeartbeat();
+	        	//no data received, continue from checking heartbeat
         		continue;
         	}
         	
@@ -120,7 +139,7 @@ abstract class AbstractSocketIO implements EngineInterface
         		continue;
         	}
         	
-        	//$data successfully read
+        	//it seems we received some valuable data, break waiting loop and return it
         	$this->restoreStreamTimeoutDefault();
         	return $data;
         }
@@ -268,17 +287,21 @@ abstract class AbstractSocketIO implements EngineInterface
         return ['context' => [],
                 'debug'   => false,
                 'wait'    => 100*1000,
-                'timeout' => ini_get("default_socket_timeout")];
+                'timeout' => ini_get("default_socket_timeout"),];
     }
     
     protected function sendHeartbeat() {
     	$this->write(EngineInterface::PING);
     }
     
-    protected function setStreamTimeoutHeartbeatCheck() {
-    	$interval = $this->getHeartbeatCheckInterval();
+    protected function setStreamTimeoutRead() {
+    	$interval = $this->read_timeout > 0
+    		? min($this->getHeartbeatCheckInterval(), $this->read_timeout)
+    		: $this->getHeartbeatCheckInterval();
     	
-    	stream_set_timeout($this->stream, floor($interval), round(1000000 * ($interval - floor($interval))));
+    	$interval; //get interval in microsec
+    	
+    	stream_set_timeout($this->stream, floor($interval / 1000000), $interval % 1000000);
     }
     
     protected function restoreStreamTimeoutDefault() {
@@ -286,12 +309,12 @@ abstract class AbstractSocketIO implements EngineInterface
     }
     
     /**
-     * Return heartbeat check interval in seconds. Fractional number supported
+     * Return heartbeat check interval in microseconds. Fractional number supported
      * 
      * @return float
      */
     protected function getHeartbeatCheckInterval() {
-    	return 1.0;
+    	return 1000000;
     }
     
     /**
@@ -301,6 +324,10 @@ abstract class AbstractSocketIO implements EngineInterface
      */
     protected function getPacketType($raw_frame_payload) {
     	return $raw_frame_payload[0];
+    }
+    
+    public function setReadTimeout($milliseconds) {
+    	$this->read_timeout = $milliseconds * 1000;
     }
 }
 
